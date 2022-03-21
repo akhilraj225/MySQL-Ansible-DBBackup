@@ -2,26 +2,36 @@
 - hosts: testdb-caa
   gather_facts: true
   tasks:
-     - name: Database directory
-       file:
-        path: /home/appadmin/DB-BACKUP
-        state: directory     
-     - name: backup  DB
-       mysql_db:
-        name: tb2
-        login_user: tb2
-        login_password: tb2
-        state: dump
-        target: /home/appadmin/DB-BACKUP/tb2-{{ ansible_date_time.date }}-{{ ansible_date_time.time }}.sql
-     - name: AZcopy
-       become: true
-       copy:    
-        src: /home/appadmin/Ansible-Backup/
-        dest: /home/appadmin/DB-BACKUP/
-        owner: appadmin
-        group: appadmin
-        mode: 755
-     - name: COPY to BLOB
-       shell:
-        cmd: sudo sh blob-copy.sh
-        chdir: /home/appadmin/DB-BACKUP
+    - name: Ansible delete file glob
+      find:
+       paths: /home/appadmin/DB-BACKUP/
+       patterns: "*.sql"
+      register: files_to_delete
+    - name: Ansible remove file glob
+      file:
+       path: "{{ item.path }}"
+       state: absent
+      with_items: "{{ files_to_delete.files }}"
+    - name: Database directory
+      file:
+       path: /home/appadmin/DB-BACKUP
+       state: directory
+    - name: backup  DB
+      mysql_db:
+       name: tb2
+       login_user: tb2
+       login_password: tb2
+       state: dump
+       target: /home/appadmin/DB-BACKUP/tb2-{{ ansible_date_time.date }}-{{ ansible_date_time.time }}.sql
+    - name: AZcopy
+      become: true
+      copy:
+       src: /home/appadmin/Ansible-Backup/
+       dest: /home/appadmin/DB-BACKUP/
+       owner: appadmin
+       group: appadmin
+       mode: 755
+    - name: COPY to BLOB
+      shell:
+       cmd: sudo sh blob-copy.sh
+       chdir: /home/appadmin/DB-BACKUP
